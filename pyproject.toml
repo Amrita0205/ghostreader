@@ -5,12 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ghostread"
 version = "1.1.0"
-description = "A translucent, always on top PDF reader for reading while something else runs"
+description = "Transparent, always on top PDF reader for Windows: read over your terminal or editor at any opacity"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [{ name = "Amrita Kadam" }]
-keywords = ["pdf", "reader", "overlay", "transparent", "always-on-top", "tkinter", "windows"]
+keywords = [
+    "pdf", "pdf-reader", "pdf-viewer", "document-viewer", "ebook",
+    "transparent", "translucent", "transparency", "opacity", "overlay",
+    "always-on-top", "click-through", "windows", "desktop", "tkinter",
+    "pymupdf", "productivity", "reading",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Win32 (MS Windows)",

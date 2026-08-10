@@ -1,15 +1,22 @@
-# GhostRead
+# GhostRead — a transparent, always on top PDF reader for Windows
 
 [![tests](https://github.com/Amrita0205/ghostreader/actions/workflows/ci.yml/badge.svg)](https://github.com/Amrita0205/ghostreader/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/ghostread)](https://pypi.org/project/ghostread/)
 [![licence: MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
+[![Windows](https://img.shields.io/badge/Windows-download%20the%20exe-0078D6?logo=windows)](https://github.com/Amrita0205/ghostreader/releases/latest)
 
-A translucent, always on top PDF reader. Built for reading while something else
-is running: the page floats over your terminal at whatever opacity you set, so a
-training run stays visible behind the textbook.
+GhostRead is a free and open source PDF reader that stays on top of every other
+window and lets you see straight through it. It is built for reading while
+something else is running: the page floats over your terminal or editor at
+whatever opacity you set, so a training run stays visible behind the textbook.
 
 Nothing off the shelf did this on Windows. Glassy PDF is macOS only, WindowTop is
-closed source and paid, and the overlay tools on GitHub only draw blank rectangles.
+closed source and paid, and the overlay tools on GitHub only draw blank
+rectangles. So GhostRead is a free alternative to both, in under 2,000 lines of
+Python you can read in an afternoon.
+
+It also runs on Linux and macOS, minus the two features that need the Windows
+compositor: click through and ghost mode.
 
 ## Install
 
@@ -185,6 +192,29 @@ touches the Windows API and it is under 150 lines.
 - `GhostRead.exe` is built without a console window, so it takes the same flags
   but cannot print back to you. `--recent`, which only prints, needs the pip
   install or the source checkout.
+
+## Questions people ask
+
+**Does it work on Windows 11?** Yes, and on Windows 10. That is the setup it was
+built on and the one the release binary is tested against.
+
+**Do I need Python?** Not for the `.exe`. Everything is bundled inside it. You
+only need Python if you install with `pip` or run from source.
+
+**Can I read a PDF while coding without alt-tabbing?** That is the whole point.
+Turn on click through (`c`) and the window stops accepting mouse input entirely,
+so you type into your editor with the page still sitting on top of it.
+
+**How do I make a PDF transparent on Windows?** Open it in GhostRead and drag the
+*see through* slider, or start with `--opacity 0.65`. If the page washes out
+against a dark background, add `--invert`, and if you want text that stays fully
+sharp at any opacity, use ghost mode.
+
+**Is it really free?** Yes, MIT licensed, no telemetry, no account, no paid tier.
+See [Licence](#licence) for the one caveat about the bundled binary.
+
+**Does it work on Linux or macOS?** The reader does. Click through and ghost mode
+do not, because both are implemented with Windows compositor calls.
 
 ## Contributing
 
