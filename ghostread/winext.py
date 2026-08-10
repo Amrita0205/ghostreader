@@ -28,6 +28,21 @@ MOD_NOREPEAT = 0x4000
 WM_HOTKEY = 0x0312
 PM_REMOVE = 0x0001
 
+# RedrawWindow flags, used to scrub the trail a layered window leaves behind.
+RDW_INVALIDATE = 0x0001
+RDW_ERASE = 0x0004
+RDW_ALLCHILDREN = 0x0080
+RDW_UPDATENOW = 0x0100
+RDW_FRAME = 0x0400
+
+# SetWindowPos flags. SWP_FRAMECHANGED is the one that matters: Windows caches
+# window data and an extended style change is not committed until it sees it.
+SWP_NOSIZE = 0x0001
+SWP_NOMOVE = 0x0002
+SWP_NOZORDER = 0x0004
+SWP_NOACTIVATE = 0x0010
+SWP_FRAMECHANGED = 0x0020
+
 HOTKEY_ID = 0xB00C
 
 
@@ -59,9 +74,17 @@ def set_click_through(tk_window, enabled: bool) -> bool:
         return False
     import ctypes
 
+    from ctypes import wintypes
+
     try:
         user32 = _user32()
+        # Without argtypes ctypes marshals the handle as a C int, which is 32
+        # bit, and a 64 bit HWND would be silently truncated.
+        user32.GetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int]
         user32.GetWindowLongW.restype = ctypes.c_long
+        user32.SetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_long]
+        user32.SetWindowLongW.restype = ctypes.c_long
+
         hwnd = top_level_hwnd(tk_window)
         if not hwnd:
             return False
@@ -72,9 +95,57 @@ def set_click_through(tk_window, enabled: bool) -> bool:
             style &= ~WS_EX_TRANSPARENT
             style |= WS_EX_LAYERED
         user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style)
+
+        # Commit the style change. SetWindowLong alone leaves it in a cache.
+        user32.SetWindowPos(
+            hwnd, None, 0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE
+            | SWP_FRAMECHANGED,
+        )
         return True
     except Exception:
         return False
+
+
+def repaint_desktop(rect=None, immediate: bool = True) -> None:
+    """Force whatever sits under the overlay to repaint itself.
+
+    A layered window, and a colour keyed one especially, does not cause the
+    windows beneath it to invalidate when it moves. Nothing asks the desktop
+    to redraw the area the overlay just left, so the overlay's last painted
+    pixels stay on screen and it looks like a second copy of the window.
+
+    ``rect`` is an ``(x, y, width, height)`` screen rectangle, or None for the
+    whole desktop. Passing NULL as the window handle targets the desktop, and
+    RDW_ALLCHILDREN carries the invalidation into the top level windows
+    sitting on it.
+    """
+    if not IS_WINDOWS:
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    try:
+        user32 = _user32()
+        user32.RedrawWindow.argtypes = [
+            wintypes.HWND, ctypes.c_void_p, wintypes.HRGN, wintypes.UINT,
+        ]
+        user32.RedrawWindow.restype = wintypes.BOOL
+
+        flags = RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_FRAME
+        if immediate:
+            flags |= RDW_UPDATENOW
+
+        if rect is None:
+            user32.RedrawWindow(None, None, None, flags)
+            return
+
+        x, y, width, height = (int(value) for value in rect)
+        # A couple of pixels of slack covers any drop shadow or rounding.
+        box = wintypes.RECT(x - 2, y - 2, x + width + 2, y + height + 2)
+        user32.RedrawWindow(None, ctypes.byref(box), None, flags)
+    except Exception:
+        pass
 
 
 class GlobalHotkey:

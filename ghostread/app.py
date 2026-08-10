@@ -217,6 +217,7 @@ class GhostReader:
         for widget in (self.bar, self.title_label):
             widget.bind("<Button-1>", self._drag_start)
             widget.bind("<B1-Motion>", self._drag_move)
+            widget.bind("<ButtonRelease-1>", self._drag_end)
             widget.bind("<Double-Button-1>", lambda e: self.toggle_roll())
 
         # Prompt row, hidden until search or goto is invoked.
@@ -281,6 +282,7 @@ class GhostReader:
         self.grip.pack(side="right", padx=(2, 6))
         self.grip.bind("<Button-1>", self._resize_start)
         self.grip.bind("<B1-Motion>", self._resize_move)
+        self.grip.bind("<ButtonRelease-1>", self._resize_end)
         self._tooltip(self.grip, "drag to resize the window")
 
         button(self.controls, "\u22ee", self.show_menu,
@@ -596,6 +598,24 @@ class GhostReader:
 
     # ------------------------------------------------------ drag / resize
 
+    def _window_rect(self):
+        """Current position and size in screen coordinates."""
+        try:
+            return (self.root.winfo_rootx(), self.root.winfo_rooty(),
+                    self.root.winfo_width(), self.root.winfo_height())
+        except tk.TclError:
+            return None
+
+    def _repaint_vacated(self, rect, immediate=False):
+        """Clean up after moving, so no stale copy is left on the desktop.
+
+        See `winext.repaint_desktop`. During a drag this only marks the region
+        dirty and lets Windows coalesce the repaints, which keeps the drag
+        smooth; the immediate pass is saved for when the mouse comes up.
+        """
+        if rect:
+            winext.repaint_desktop(rect, immediate=immediate)
+
     def _drag_start(self, event):
         self._drag_origin = (event.x_root, event.y_root,
                              self.root.winfo_x(), self.root.winfo_y())
@@ -604,8 +624,15 @@ class GhostReader:
         if not getattr(self, "_drag_origin", None):
             return
         ox, oy, wx, wy = self._drag_origin
+        before = self._window_rect()
         self.root.geometry("+{}+{}".format(
             wx + event.x_root - ox, wy + event.y_root - oy))
+        self._repaint_vacated(before)
+
+    def _drag_end(self, _event=None):
+        self._drag_origin = None
+        # One full pass, to catch anything the per move repaints missed.
+        winext.repaint_desktop(None, immediate=True)
 
     def _resize_start(self, event):
         self._resize_origin = (event.x_root, event.y_root,
@@ -615,9 +642,15 @@ class GhostReader:
         if not getattr(self, "_resize_origin", None):
             return
         ox, oy, ww, wh = self._resize_origin
+        before = self._window_rect()
         width = max(280, ww + event.x_root - ox)
         height = max(200, wh + event.y_root - oy)
         self.root.geometry("{}x{}".format(int(width), int(height)))
+        self._repaint_vacated(before)
+
+    def _resize_end(self, _event=None):
+        self._resize_origin = None
+        winext.repaint_desktop(None, immediate=True)
 
     # ---------------------------------------------------------- rendering
 
@@ -791,6 +824,7 @@ class GhostReader:
         self._flash("invert " + ("on" if self.invert else "off"))
 
     def toggle_roll(self):
+        before = self._window_rect()
         if self.rolled_up:
             self.root.geometry("{}x{}".format(
                 self.root.winfo_width(), self._rolled_height))
@@ -799,6 +833,8 @@ class GhostReader:
             self._rolled_height = self.root.winfo_height()
             self.root.geometry("{}x{}".format(self.root.winfo_width(), 28))
             self.rolled_up = True
+        # Rolling up uncovers most of the window's area in one go.
+        self._repaint_vacated(before, immediate=True)
 
     def toggle_click_through(self):
         if not winext.IS_WINDOWS:
@@ -849,6 +885,7 @@ class GhostReader:
             self.render(anchor="keep")
             self._flash("ghost mode off")
             self._update_controls()
+            self._repaint_vacated(self._window_rect(), immediate=True)
             return
 
         try:
@@ -871,6 +908,9 @@ class GhostReader:
         self.render(anchor="keep")
         self._flash("ghost mode on, text only")
         self._update_controls()
+        # Keying the background out uncovers whatever is behind the page, which
+        # has not been asked to draw itself since the overlay first covered it.
+        self._repaint_vacated(self._window_rect(), immediate=True)
 
     # -------------------------------------------------------------- menu
 
@@ -1235,6 +1275,7 @@ class GhostReader:
 
     def quit(self):
         self.save_state()
+        last_rect = self._window_rect()
         if self.click_through:
             winext.set_click_through(self.root, False)
         if self.ghost:
@@ -1248,6 +1289,9 @@ class GhostReader:
             self.root.destroy()
         except tk.TclError:
             pass
+        # Closing uncovers the whole window area at once, and by then there is
+        # no window left to ask for a repaint, so do it here.
+        self._repaint_vacated(last_rect, immediate=True)
 
 
 # --------------------------------------------------------------- helpers

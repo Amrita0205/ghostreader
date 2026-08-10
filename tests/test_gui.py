@@ -16,6 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tests.test_core import make_pdf  # noqa: E402
 
+from ghostread import winext  # noqa: E402
+
 PASSED = []
 FAILED = []
 
@@ -37,6 +39,17 @@ def attempt(name, function):
     except Exception as exc:
         check(name, False, "{}: {}".format(type(exc).__name__, exc))
         traceback.print_exc()
+
+
+def _survives(function) -> bool:
+    """True if calling it raises nothing. For the ctypes paths, which must
+    degrade to a no-op rather than take the window down with them."""
+    try:
+        function()
+        return True
+    except Exception:
+        traceback.print_exc()
+        return False
 
 
 def run():
@@ -342,8 +355,49 @@ def run():
     attempt("menu builds without error", lambda: _build_menu_only(reader))
 
     print("\nghost mode")
-    attempt("ghost mode declines off Windows", reader.toggle_ghost)
-    check("ghost stayed off", reader.ghost is False)
+    if winext.IS_WINDOWS:
+        # On Windows the colour key is real, so the mode actually engages.
+        attempt("ghost mode turns on", reader.toggle_ghost)
+        check("ghost is on", reader.ghost is True)
+        check("ghost forces invert", reader.invert is True)
+        attempt("ghost mode turns off again", reader.toggle_ghost)
+        check("ghost is off again", reader.ghost is False)
+    else:
+        attempt("ghost mode declines off Windows", reader.toggle_ghost)
+        check("ghost stayed off", reader.ghost is False)
+
+    print("\nmoving the window repaints what it uncovers")
+    # A layered window leaves a stale copy of itself behind unless the area it
+    # vacated is invalidated. Check the plumbing is wired to every mover.
+    calls = []
+    original_repaint = winext.repaint_desktop
+    winext.repaint_desktop = lambda rect=None, immediate=True: calls.append(
+        (rect, immediate))
+    try:
+        reader._drag_start(FakeDrag(400, 400))
+        reader._drag_move(FakeDrag(460, 450))
+        check("dragging asks for a repaint", len(calls) == 1, calls)
+        check("it repaints the rectangle just vacated",
+              calls and calls[0][0] is not None, calls)
+        check("and stays deferred so the drag keeps up",
+              calls and calls[0][1] is False, calls)
+
+        calls.clear()
+        reader._drag_end()
+        check("releasing does one full immediate pass",
+              calls == [(None, True)], calls)
+
+        calls.clear()
+        reader.toggle_roll()
+        reader.toggle_roll()
+        check("rolling up and down repaints", len(calls) == 2, calls)
+    finally:
+        winext.repaint_desktop = original_repaint
+
+    check("repaint_desktop is safe to call anywhere",
+          _survives(lambda: winext.repaint_desktop(None, immediate=False)))
+    check("repaint_desktop tolerates a rectangle",
+          _survives(lambda: winext.repaint_desktop((0, 0, 10, 10))))
 
     print("\nopening another file")
     second = os.path.join(tmpdir, "second.pdf")
