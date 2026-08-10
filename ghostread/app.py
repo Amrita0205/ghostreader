@@ -74,8 +74,13 @@ bottom bar, left to right
                        out from what is behind it.
   up arrow             keep the window on top
   circle dot           click through: clicks reach the
-                       window underneath (Windows).
-                       Ctrl+Alt+G brings control back.
+                       window underneath (Windows). The
+                       page stops taking the mouse, so a
+                       small "turn it off" panel appears
+                       and stays clickable. Drag it out of
+                       the way if it is over something.
+                       A global hotkey works too, and the
+                       panel shows which one was claimed.
   find / toc           search the text, or jump by chapter
   three dots           the full menu, with Open and Recent
 
@@ -111,6 +116,7 @@ class GhostReader:
         self.invert = bool(saved.get("invert", False))
         self.topmost = not opts.no_topmost
         self.click_through = False
+        self._escape_panel = None
         self.ghost = False
         self.halo_width = max(0, min(int(saved.get("halo", DEFAULT_HALO)),
                                      MAX_HALO))
@@ -372,7 +378,8 @@ class GhostReader:
             self.controls, "\u2191", self.toggle_topmost, "keep on top  (t)")
         self.through_button = button(
             self.controls, "\u2609", self.toggle_click_through,
-            "let clicks pass through to the window below  (Windows)")
+            "let clicks pass through to the window below. A small panel "
+            "stays on screen to switch it back off  (Windows)")
         button(self.controls, "find", lambda: self.open_prompt("search"),
                "search the document  (Ctrl+F)", width=4)
         button(self.controls, "toc", self.show_outline,
@@ -855,21 +862,102 @@ class GhostReader:
         if self.click_through:
             winext.set_click_through(self.root, False)
             self.click_through = False
+            self._hide_escape_panel()
             self._update_controls()
             self._flash("click through off")
             return
 
         # Refuse to enable it unless there is a way back.
         if not self.hotkey.registered and not self.hotkey.register():
-            self._flash("cannot grab Ctrl+Alt+G, click through disabled")
+            self._flash("no escape hotkey is free, click through disabled")
             return
 
         if winext.set_click_through(self.root, True):
             self.click_through = True
             self._update_controls()
-            self._flash("click through on, Ctrl+Alt+G to return")
+            self._show_escape_panel()
+            self._flash("click through on, {} to return".format(
+                self.hotkey.label))
         else:
             self._flash("click through unavailable")
+
+    # ------------------------------------------------- click through escape
+
+    def _show_escape_panel(self):
+        """A small window that stays clickable while the overlay does not.
+
+        Click through is the one mode that can strand someone. The overlay
+        stops accepting the mouse entirely, and that includes the button that
+        would switch the mode off, so the way out cannot live in that window.
+        This is a separate top level, and nothing ever makes it click through,
+        so it keeps taking clicks after the page has stopped.
+        """
+        self._hide_escape_panel()
+        try:
+            panel = tk.Toplevel(self.root)
+            panel.wm_overrideredirect(True)
+            panel.attributes("-topmost", True)
+            panel.configure(bg=ACCENT)
+        except tk.TclError:
+            return
+
+        inner = tk.Frame(panel, bg=PANEL)
+        inner.pack(padx=1, pady=1)
+
+        label = tk.Label(
+            inner, text="☉  click through is on", bg=PANEL, fg=FG,
+            font=tkfont.Font(family="Segoe UI", size=9), padx=10, pady=6)
+        label.pack(side="left")
+
+        tk.Button(
+            inner, text="turn it off", command=self.toggle_click_through,
+            bg=ACCENT, fg="#11121a", relief="flat", bd=0, padx=10, pady=2,
+            activebackground=FG, cursor="hand2",
+            font=tkfont.Font(family="Segoe UI", size=9, weight="bold"),
+        ).pack(side="left", padx=(0, 8))
+
+        tk.Label(
+            inner, text="or {}".format(self.hotkey.label), bg=PANEL, fg=DIM,
+            font=tkfont.Font(family="Segoe UI", size=8), padx=(0), pady=6,
+        ).pack(side="left", padx=(0, 10))
+
+        # Sit just under the top bar, right aligned, and clamped on screen.
+        panel.update_idletasks()
+        width = panel.winfo_reqwidth()
+        x = self.root.winfo_rootx() + max(0, self.root.winfo_width() - width - 12)
+        y = self.root.winfo_rooty() + 34
+        x = max(0, min(x, panel.winfo_screenwidth() - width))
+        y = max(0, min(y, panel.winfo_screenheight() - 40))
+        panel.wm_geometry("+{}+{}".format(int(x), int(y)))
+
+        # The overlay cannot be dragged while it ignores the mouse, so this is
+        # the only thing left to move if it happens to cover something.
+        def start(event):
+            panel._origin = (event.x_root, event.y_root,
+                             panel.winfo_x(), panel.winfo_y())
+
+        def move(event):
+            origin = getattr(panel, "_origin", None)
+            if not origin:
+                return
+            ox, oy, px, py = origin
+            panel.wm_geometry("+{}+{}".format(
+                px + event.x_root - ox, py + event.y_root - oy))
+
+        for widget in (inner, label):
+            widget.bind("<Button-1>", start)
+            widget.bind("<B1-Motion>", move)
+
+        self._escape_panel = panel
+
+    def _hide_escape_panel(self):
+        panel = getattr(self, "_escape_panel", None)
+        if panel is not None:
+            try:
+                panel.destroy()
+            except tk.TclError:
+                pass
+        self._escape_panel = None
 
     def _halo(self) -> int:
         """Outline width for the mode the reader is currently in.
@@ -1085,6 +1173,7 @@ class GhostReader:
         if self.click_through:
             winext.set_click_through(self.root, False)
             self.click_through = False
+            self._hide_escape_panel()
             self._flash("click through off")
         try:
             self.root.focus_force()
@@ -1309,6 +1398,7 @@ class GhostReader:
     def quit(self):
         self.save_state()
         last_rect = self._window_rect()
+        self._hide_escape_panel()
         if self.click_through:
             winext.set_click_through(self.root, False)
         if self.ghost:

@@ -45,6 +45,16 @@ SWP_FRAMECHANGED = 0x0020
 
 HOTKEY_ID = 0xB00C
 
+# Tried in order. A combination can already be taken, by another application
+# or simply by a second GhostRead, and RegisterHotKey then fails outright, so
+# there has to be somewhere else to go.
+HOTKEY_CANDIDATES = (
+    (MOD_CONTROL | MOD_ALT, 0x47, "Ctrl+Alt+G"),
+    (MOD_CONTROL | MOD_ALT | MOD_SHIFT, 0x47, "Ctrl+Alt+Shift+G"),
+    (MOD_CONTROL | MOD_ALT, 0x4B, "Ctrl+Alt+K"),
+    (MOD_CONTROL | MOD_ALT, 0x51, "Ctrl+Alt+Q"),
+)
+
 
 def _user32():
     if not IS_WINDOWS:
@@ -155,14 +165,17 @@ class GlobalHotkey:
     polling the queue from a Tk `after` callback picks the message up.
     """
 
-    def __init__(self, callback, modifiers=MOD_CONTROL | MOD_ALT, vk=0x47):
+    def __init__(self, callback, candidates=HOTKEY_CANDIDATES):
         self.callback = callback
-        self.modifiers = modifiers
-        self.vk = vk
+        self.candidates = tuple(candidates)
         self.registered = False
+        # What to tell the user to press. Correct only once something has
+        # actually been claimed, but a sensible thing to show before that.
+        self.label = self.candidates[0][2]
         self._msg = None
 
     def register(self) -> bool:
+        """Claim the first combination nothing else is holding."""
         if not IS_WINDOWS:
             return False
         import ctypes
@@ -170,14 +183,16 @@ class GlobalHotkey:
 
         try:
             user32 = _user32()
-            ok = user32.RegisterHotKey(
-                None, HOTKEY_ID, self.modifiers | MOD_NOREPEAT, self.vk
-            )
-            if not ok:
-                return False
-            self._msg = wintypes.MSG()
-            self.registered = True
-            return True
+            for modifiers, vk, label in self.candidates:
+                ok = user32.RegisterHotKey(
+                    None, HOTKEY_ID, modifiers | MOD_NOREPEAT, vk
+                )
+                if ok:
+                    self.label = label
+                    self._msg = wintypes.MSG()
+                    self.registered = True
+                    return True
+            return False
         except Exception:
             return False
 

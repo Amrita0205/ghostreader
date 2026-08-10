@@ -123,9 +123,17 @@ wider over something busy like a chart or a video.
 
 **Click through (`c`, Windows only).** Mouse clicks pass straight through the
 overlay to whatever is underneath, so you can keep typing in your editor without
-moving the page out of the way. Since you can no longer click the window to switch
-it off, `Ctrl+Alt+G` is registered as a global hotkey to bring it back. If that
-hotkey cannot be claimed, click through refuses to turn on rather than trapping you.
+moving the page out of the way.
+
+The catch is that the page stops taking the mouse *completely*, including the
+button that would turn the mode back off. So switching it on puts a small
+**turn it off** panel on screen. That panel is a separate window and is never
+made click through, so it keeps working after the page has stopped; drag it
+somewhere else if it covers something you need. A global hotkey does the same
+job, and the panel tells you which one was claimed, because the first choice of
+`Ctrl+Alt+G` can already be taken by another application or by a second copy of
+GhostRead. If no hotkey at all is free, click through refuses to turn on rather
+than trapping you.
 
 ## Where it stores things
 

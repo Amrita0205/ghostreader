@@ -41,6 +41,27 @@ def attempt(name, function):
         traceback.print_exc()
 
 
+def _descendants(widget):
+    """Every widget under this one, at any depth."""
+    for child in widget.winfo_children():
+        yield child
+        for grandchild in _descendants(child):
+            yield grandchild
+
+
+def _panel_text(widget) -> str:
+    """All the text shown anywhere inside a widget, joined together."""
+    if widget is None:
+        return ""
+    parts = []
+    for child in _descendants(widget):
+        try:
+            parts.append(str(child.cget("text")))
+        except Exception:
+            pass
+    return " ".join(parts)
+
+
 def _survives(function) -> bool:
     """True if calling it raises nothing. For the ctypes paths, which must
     degrade to a no-op rather than take the window down with them."""
@@ -147,6 +168,8 @@ def run():
     attempt("invert off", reader.toggle_invert)
     pump()
     attempt("always on top toggles", reader.toggle_topmost)
+    check("no escape panel before click through",
+          reader._escape_panel is None)
     attempt("click through toggles", reader.toggle_click_through)
     if winext.IS_WINDOWS:
         # It engages only when the escape hotkey could be claimed, and another
@@ -157,10 +180,29 @@ def run():
               (not reader.click_through) or reader.hotkey.registered,
               (reader.click_through, reader.hotkey.registered))
         if reader.click_through:
+            pump()
+            # The overlay has stopped taking the mouse, so the only remaining
+            # way out has to be a window that is not the overlay.
+            panel = reader._escape_panel
+            check("an escape panel appears", panel is not None)
+            check("the escape panel is a separate window",
+                  panel is not None and str(panel) != str(reader.root))
+            check("it stays above the page",
+                  panel is not None and bool(panel.attributes("-topmost")))
+            check("it names the hotkey that was actually claimed",
+                  reader.hotkey.label in _panel_text(panel),
+                  (reader.hotkey.label, _panel_text(panel)))
+            check("it offers a button to switch the mode off",
+                  any(isinstance(w, tk.Button)
+                      for w in _descendants(panel)))
+
             attempt("click through turns off again",
                     reader.toggle_click_through)
+            pump()
             check("click through is off again",
                   reader.click_through is False)
+            check("and the escape panel goes away",
+                  reader._escape_panel is None)
     else:
         check("click through stayed off", reader.click_through is False)
     attempt("roll up", reader.toggle_roll)
