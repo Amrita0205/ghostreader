@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+build/
+dist/
+*.egg-info/
+*.spec.bak
+
+# PyInstaller working directory
+packaging/build/
+
+# local state and scratch PDFs
+.ghostread/
+*.pdf

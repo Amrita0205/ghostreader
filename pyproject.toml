@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ghostread"
+version = "1.1.0"
+description = "A translucent, always on top PDF reader for reading while something else runs"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Amrita Kadam" }]
+keywords = ["pdf", "reader", "overlay", "transparent", "always-on-top", "tkinter", "windows"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: X11 Applications",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Utilities",
+    "Topic :: Multimedia :: Graphics :: Viewers",
+]
+dependencies = [
+    "PyMuPDF>=1.23",
+    "Pillow>=9.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Amrita0205/ghostread"
+Source = "https://github.com/Amrita0205/ghostread"
+Issues = "https://github.com/Amrita0205/ghostread/issues"
+Changelog = "https://github.com/Amrita0205/ghostread/releases"
+
+[project.scripts]
+ghostread = "ghostread.cli:main"
+
+[project.gui-scripts]
+ghostread-gui = "ghostread.cli:main"
+
+[tool.setuptools]
+packages = ["ghostread"]

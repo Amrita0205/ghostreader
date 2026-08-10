@@ -1,0 +1,15 @@
+# Normalise to LF in the repository, and check out whatever the platform wants.
+* text=auto
+
+# These must keep LF even on a Windows checkout or they break where they run.
+*.sh text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+
+# This one must keep CRLF, or cmd.exe mangles it.
+*.bat text eol=crlf
+
+*.pdf binary
+*.exe binary
+*.png binary
+*.ico binary
