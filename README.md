@@ -141,6 +141,21 @@ Page, zoom, opacity and window position are saved per document in
 `~/.ghostread/state.json`, so reopening a book drops you back where you were. Set
 `GHOSTREAD_HOME` to move that folder, or pass `--no-remember` to skip it.
 
+## What changed in 1.2
+
+- Ghost mode outlines the text, so it stays readable over a light or busy
+  window instead of dissolving into it. `e` cycles the outline width.
+- Click through no longer strands you: a small draggable **turn it off** panel
+  stays on screen and keeps working after the page has stopped taking the
+  mouse. The escape hotkey falls back through several combinations if the
+  first is already taken, and the panel names the one it actually claimed.
+- Moving the window in ghost mode no longer leaves a stale copy of it painted
+  on the desktop.
+- Fixed a hotkey poll that discarded messages Tk needed, and could spin at
+  100% CPU once the window had anything left to repaint.
+- Click through now commits its window style properly, which is why it had
+  been intermittent.
+
 ## What changed in 1.1
 
 - Full mouse driven control bar with tooltips; the keyboard is now optional
