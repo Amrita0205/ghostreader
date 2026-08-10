@@ -1,6 +1,6 @@
 # GhostRead
 
-[![tests](https://github.com/Amrita0205/ghostread/actions/workflows/ci.yml/badge.svg)](https://github.com/Amrita0205/ghostread/actions/workflows/ci.yml)
+[![tests](https://github.com/Amrita0205/ghostreader/actions/workflows/ci.yml/badge.svg)](https://github.com/Amrita0205/ghostreader/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/ghostread)](https://pypi.org/project/ghostread/)
 [![licence: MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
 
@@ -23,7 +23,7 @@ justify). Click *More info*, then *Run anyway*. If you would rather not trust a
 binary from a stranger, every release is built by GitHub Actions straight from
 the tagged source in this repo, and you can read the whole thing in an afternoon.
 
-[latest]: https://github.com/Amrita0205/ghostread/releases/latest
+[latest]: https://github.com/Amrita0205/ghostreader/releases/latest
 
 **With pip**, if you already have Python 3.9 or newer and want the `ghostread`
 command on your PATH:

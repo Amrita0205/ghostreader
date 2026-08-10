@@ -35,10 +35,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Amrita0205/ghostread"
-Source = "https://github.com/Amrita0205/ghostread"
-Issues = "https://github.com/Amrita0205/ghostread/issues"
-Changelog = "https://github.com/Amrita0205/ghostread/releases"
+Homepage = "https://github.com/Amrita0205/ghostreader"
+Source = "https://github.com/Amrita0205/ghostreader"
+Issues = "https://github.com/Amrita0205/ghostreader/issues"
+Changelog = "https://github.com/Amrita0205/ghostreader/releases"
 
 [project.scripts]
 ghostread = "ghostread.cli:main"

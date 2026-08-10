@@ -7,8 +7,8 @@ what you did. If the window misbehaves, a screenshot usually says it all.
 ## Getting set up
 
 ```
-git clone https://github.com/Amrita0205/ghostread
-cd ghostread
+git clone https://github.com/Amrita0205/ghostreader
+cd ghostreader
 python -m venv .venv
 .venv\Scripts\activate          # source .venv/bin/activate elsewhere
 pip install -e .

@@ -103,4 +103,4 @@ jobs:
             `GhostRead.exe` bundles PyMuPDF, which is AGPL-3.0, so the binary as a
             whole is distributed under the AGPL. The complete corresponding source
             is this repository at the tagged commit. See
-            [THIRD-PARTY-NOTICES.md](https://github.com/Amrita0205/ghostread/blob/main/THIRD-PARTY-NOTICES.md).
+            [THIRD-PARTY-NOTICES.md](https://github.com/Amrita0205/ghostreader/blob/main/THIRD-PARTY-NOTICES.md).
