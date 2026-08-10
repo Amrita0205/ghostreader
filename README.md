@@ -113,6 +113,14 @@ sharp light text floating directly over your terminal with no washing out at
 all, because the glyphs are never blended. Clicks pass through the empty parts
 for free. Press the sparkle button again to get the normal page back.
 
+Light text over a *light* window is the one case that does not work on its own,
+because the glyphs disappear into it and all you see is their dark edges. So the
+text is outlined: the glyphs are grown outward by a couple of pixels and that
+ring is painted near black, which reads like a subtitle and stays opaque while
+everything further out stays invisible. Press `e` to step the outline through
+off, thin and heavier. Two pixels is the default and suits most backgrounds; go
+wider over something busy like a chart or a video.
+
 **Click through (`c`, Windows only).** Mouse clicks pass straight through the
 overlay to whatever is underneath, so you can keep typing in your editor without
 moving the page out of the way. Since you can no longer click the window to switch
@@ -209,6 +217,12 @@ so you type into your editor with the page still sitting on top of it.
 *see through* slider, or start with `--opacity 0.65`. If the page washes out
 against a dark background, add `--invert`, and if you want text that stays fully
 sharp at any opacity, use ghost mode.
+
+**The text is hard to read against what is behind it.** Plain opacity cannot fix
+this: it blends the page and the background equally, so fading one fades the
+other. Use ghost mode instead, which keeps the glyphs at full strength and makes
+only the background disappear, and press `e` for a heavier outline if the window
+behind is light or busy.
 
 **Is it really free?** Yes, MIT licensed, no telemetry, no account, no paid tier.
 See [Licence](#licence) for the one caveat about the bundled binary.

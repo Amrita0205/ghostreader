@@ -40,6 +40,11 @@ ACCENT = "#7aa2f7"
 WARN = "#f7a27a"
 KEY_COLOUR = "#000000"  # exact colour that ghost mode makes transparent
 
+# Outline width, in pixels, for ghost mode. Two is enough to lift text off a
+# busy background without the page starting to look like it has a border.
+DEFAULT_HALO = 2
+MAX_HALO = 4
+
 MIN_OPACITY = 0.15
 MAX_OPACITY = 1.0
 OPACITY_STEP = 0.05
@@ -64,7 +69,9 @@ bottom bar, left to right
                        disappears and only the text stays,
                        fully sharp, floating over your
                        work. Clicks pass through the
-                       empty parts.
+                       empty parts. Press e if the text
+                       needs a heavier outline to stand
+                       out from what is behind it.
   up arrow             keep the window on top
   circle dot           click through: clicks reach the
                        window underneath (Windows).
@@ -85,8 +92,8 @@ keys, if you prefer them
   + / -         zoom             0 / 9    fit width/page
   [ / ]         fade less/more   i        invert
   t             keep on top      c        click through
-  h             roll up          F1       this help
-  q             quit
+  e             text outline     h        roll up
+  F1            this help        q        quit
 """
 
 
@@ -105,6 +112,8 @@ class GhostReader:
         self.topmost = not opts.no_topmost
         self.click_through = False
         self.ghost = False
+        self.halo_width = max(0, min(int(saved.get("halo", DEFAULT_HALO)),
+                                     MAX_HALO))
         self.rolled_up = False
 
         self.photo = None
@@ -561,6 +570,7 @@ class GhostReader:
             "t": self.toggle_topmost,
             "i": self.toggle_invert,
             "c": self.toggle_click_through,
+            "e": self.cycle_halo,
             "h": self.toggle_roll,
             "q": self.quit,
         }
@@ -688,7 +698,8 @@ class GhostReader:
         self.current_zoom = zoom
 
         try:
-            image = self.doc.render(self.page, zoom, self.invert)
+            image = self.doc.render(self.page, zoom, self.invert,
+                                    self._halo())
         except Exception as exc:
             self._set_status("render failed: {}".format(exc))
             return
@@ -736,7 +747,7 @@ class GhostReader:
 
         def work():
             try:
-                self.doc.render(page_index, zoom, self.invert)
+                self.doc.render(page_index, zoom, self.invert, self._halo())
             except Exception:
                 pass
             finally:
@@ -859,6 +870,27 @@ class GhostReader:
             self._flash("click through on, Ctrl+Alt+G to return")
         else:
             self._flash("click through unavailable")
+
+    def _halo(self) -> int:
+        """Outline width for the mode the reader is currently in.
+
+        Only ghost mode needs one. Everywhere else the page itself is still
+        behind the words, so there is already something to read them against.
+        """
+        return self.halo_width if self.ghost else 0
+
+    def cycle_halo(self):
+        """Step the outline through off, thin, thicker, and back."""
+        if not self.ghost:
+            self._flash("the outline only applies in ghost mode")
+            return
+        self.halo_width = (self.halo_width + 1) % (MAX_HALO + 1)
+        self.doc.drop_cache()
+        self.render(anchor="keep")
+        if self.halo_width:
+            self._flash("text outline {} px".format(self.halo_width))
+        else:
+            self._flash("text outline off")
 
     def toggle_ghost(self):
         """Hide the page itself and keep only the text.
@@ -1270,6 +1302,7 @@ class GhostReader:
             "fit": self.fit,
             "opacity": self.opacity,
             "invert": self.invert,
+            "halo": self.halo_width,
             "geometry": geometry,
         })
 

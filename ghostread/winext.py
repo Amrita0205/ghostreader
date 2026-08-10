@@ -182,7 +182,15 @@ class GlobalHotkey:
             return False
 
     def poll(self) -> None:
-        """Drain any pending hotkey messages. Cheap enough to call often."""
+        """Take any pending hotkey presses off the queue.
+
+        The filter arguments matter. Peeking with a range of 0 to 0 asks for
+        *every* message on the thread, and PM_REMOVE then throws away ones Tk
+        needed. It also never terminates if the window has an invalid region,
+        because WM_PAINT is regenerated for as long as that region stays
+        invalid and discarding the message does nothing to validate it. Asking
+        only for WM_HOTKEY leaves everything else where Tk can still find it.
+        """
         if not self.registered:
             return
         import ctypes
@@ -190,7 +198,7 @@ class GlobalHotkey:
         try:
             user32 = _user32()
             while user32.PeekMessageW(
-                ctypes.byref(self._msg), None, 0, 0, PM_REMOVE
+                ctypes.byref(self._msg), None, WM_HOTKEY, WM_HOTKEY, PM_REMOVE
             ):
                 if self._msg.message == WM_HOTKEY and self._msg.wParam == HOTKEY_ID:
                     self.callback()

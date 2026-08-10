@@ -13,7 +13,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pymupdf  # noqa: E402
 
-from ghostread.document import PdfDocument, PdfError  # noqa: E402
+from ghostread.document import (  # noqa: E402
+    HALO_COLOUR, PdfDocument, PdfError, add_halo,
+)
 
 PASSED = []
 FAILED = []
@@ -72,6 +74,36 @@ def run():
     check("invert changes the pixels",
           inverted.getpixel((5, 5)) != image.getpixel((5, 5)),
           (inverted.getpixel((5, 5)), image.getpixel((5, 5))))
+
+    print("\ntext outline for ghost mode")
+    # Ghost mode keys pure black out, so the outline has to be dark enough to
+    # read as a shadow but never exactly the key colour, or it vanishes too.
+    haloed = doc.render(0, 1.0, invert=True, halo=2)
+    # tobytes on an "L" image is one byte per pixel, and unlike getdata it
+    # behaves the same on every Pillow back to the 9.x floor in requirements.
+    plain_l = list(inverted.convert("L").tobytes())
+    halo_l = list(haloed.convert("L").tobytes())
+
+    check("outline leaves the glyphs untouched",
+          all(a == b for a, b in zip(plain_l, halo_l) if a > 40))
+    check("outline never uses the key colour itself",
+          all(value != 0 for value in HALO_COLOUR), HALO_COLOUR)
+    check("outline covers more than the bare page did",
+          sum(1 for v in halo_l if 1 <= v <= 20)
+          > sum(1 for v in plain_l if 1 <= v <= 20))
+    check("outline still leaves the margins transparent",
+          min(halo_l) == 0)
+    check("a wider outline covers more",
+          sum(1 for v in doc.render(0, 1.0, invert=True, halo=3)
+              .convert("L").tobytes() if 1 <= v <= 20)
+          > sum(1 for v in halo_l if 1 <= v <= 20))
+    check("outline is a no-op without invert",
+          doc.render(1, 1.0, invert=False, halo=2)
+          .tobytes() == doc.render(1, 1.0, invert=False).tobytes())
+    check("halo=0 matches an un-outlined render",
+          doc.render(0, 1.0, invert=True, halo=0) is inverted)
+    check("add_halo declines a zero radius",
+          add_halo(inverted, 0) is inverted)
 
     print("\ncache")
     first = doc.render(2, 1.0)

@@ -54,7 +54,7 @@ def _survives(function) -> bool:
 
 def run():
     import tkinter as tk
-    from ghostread.app import GhostReader
+    from ghostread.app import MAX_HALO, GhostReader
     from ghostread.cli import build_parser
     from ghostread.document import PdfDocument
 
@@ -147,8 +147,22 @@ def run():
     attempt("invert off", reader.toggle_invert)
     pump()
     attempt("always on top toggles", reader.toggle_topmost)
-    attempt("click through is refused off Windows", reader.toggle_click_through)
-    check("click through stayed off", reader.click_through is False)
+    attempt("click through toggles", reader.toggle_click_through)
+    if winext.IS_WINDOWS:
+        # It engages only when the escape hotkey could be claimed, and another
+        # GhostRead already holding Ctrl+Alt+G is a legitimate refusal. So
+        # assert the safety property rather than either outcome: the mode is
+        # never left on without a way back out of it.
+        check("click through never engages without a way back",
+              (not reader.click_through) or reader.hotkey.registered,
+              (reader.click_through, reader.hotkey.registered))
+        if reader.click_through:
+            attempt("click through turns off again",
+                    reader.toggle_click_through)
+            check("click through is off again",
+                  reader.click_through is False)
+    else:
+        check("click through stayed off", reader.click_through is False)
     attempt("roll up", reader.toggle_roll)
     pump()
     check("window rolled up", reader.rolled_up is True)
@@ -365,6 +379,22 @@ def run():
     else:
         attempt("ghost mode declines off Windows", reader.toggle_ghost)
         check("ghost stayed off", reader.ghost is False)
+
+    print("\ntext outline")
+    check("no outline outside ghost mode", reader._halo() == 0, reader._halo())
+    was_ghost, reader.ghost = reader.ghost, True
+    reader.halo_width = 2
+    check("ghost mode asks for one", reader._halo() == 2, reader._halo())
+    attempt("cycling the outline redraws", reader.cycle_halo)
+    pump()
+    check("cycling steps the width up", reader.halo_width == 3,
+          reader.halo_width)
+    reader.halo_width = MAX_HALO
+    reader.cycle_halo()
+    pump()
+    check("and wraps back to off", reader.halo_width == 0, reader.halo_width)
+    reader.ghost = was_ghost
+    reader.halo_width = 2
 
     print("\nmoving the window repaints what it uncovers")
     # A layered window leaves a stale copy of itself behind unless the area it

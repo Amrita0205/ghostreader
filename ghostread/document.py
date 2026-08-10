@@ -16,11 +16,53 @@ try:
 except ImportError:  # older installs still expose the library as "fitz"
     import fitz as pymupdf
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageChops, ImageFilter, ImageOps
+
+# Ghost mode keys out one exact colour, so anything the outline is painted in
+# must differ from it or the outline would be keyed out too. Near black reads
+# as a shadow rather than a box.
+HALO_COLOUR = (10, 10, 14)
 
 
 class PdfError(Exception):
     """Raised for anything the user needs to be told about in plain English."""
+
+
+def add_halo(image: Image.Image, radius: int = 2) -> Image.Image:
+    """Give light glyphs a dark outline so they survive any background.
+
+    Ghost mode keys the page background out completely, which leaves pale text
+    hanging directly over whatever is behind. Over a dark terminal that is
+    perfect, over a light window it is unreadable, and over a busy one the
+    background competes with the words.
+
+    Outlining fixes it the way subtitles do: grow the glyphs outward, paint the
+    grown area near black, then keep whichever is brighter per pixel. The text
+    and its anti aliasing come through untouched, the ring around it turns into
+    an opaque shadow, and everything further out stays exactly the key colour
+    and so stays invisible.
+
+    Expects an already inverted page, meaning light text on a black ground.
+    """
+    if radius < 1:
+        return image
+
+    glyphs = image.convert("L").point(lambda value: 255 if value > 40 else 0)
+
+    # Repeated 3x3 dilation is cheaper than one large kernel and lets radius
+    # stay a plain pixel count.
+    spread = glyphs
+    for _ in range(radius):
+        spread = spread.filter(ImageFilter.MaxFilter(3))
+
+    outline = Image.composite(
+        Image.new("RGB", image.size, HALO_COLOUR),
+        Image.new("RGB", image.size, (0, 0, 0)),
+        spread,
+    )
+    # Lighter keeps the glyphs, keeps their anti aliased edges, and only fills
+    # in where the page was darker than the outline colour.
+    return ImageChops.lighter(image, outline)
 
 
 class PdfDocument:
@@ -104,11 +146,17 @@ class PdfDocument:
 
     # ----------------------------------------------------------------- render
 
-    def render(self, index: int, zoom: float, invert: bool = False) -> Image.Image:
-        """Render one page to a PIL image. Results are cached."""
+    def render(self, index: int, zoom: float, invert: bool = False,
+               halo: int = 0) -> Image.Image:
+        """Render one page to a PIL image. Results are cached.
+
+        `halo` outlines the glyphs, which only makes sense on an inverted page
+        and is what keeps ghost mode readable over a light or busy background.
+        """
         index = self.clamp(index)
         zoom = round(max(0.1, min(float(zoom), 8.0)), 3)
-        key = (index, zoom, bool(invert))
+        halo = max(0, int(halo))
+        key = (index, zoom, bool(invert), halo)
 
         with self._lock:
             hit = self._cache.get(key)
@@ -122,6 +170,8 @@ class PdfDocument:
 
             if invert:
                 image = ImageOps.invert(image)
+            if halo and invert:
+                image = add_halo(image, halo)
 
             self._cache[key] = image
             while len(self._cache) > self.cache_size:
