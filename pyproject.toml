@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ghostread"
-version = "1.2.1"
+version = "1.2.2"
 description = "Transparent, always on top PDF reader for Windows: read over your terminal or editor at any opacity"
 readme = "README.md"
 requires-python = ">=3.9"

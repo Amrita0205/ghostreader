@@ -41,6 +41,15 @@ def attempt(name, function):
         traceback.print_exc()
 
 
+class WheelEvent:
+    """Just enough of a Tk event for the wheel handlers."""
+
+    def __init__(self, widget, delta=-120, state=0):
+        self.widget = widget
+        self.delta = delta
+        self.state = state
+
+
 def _descendants(widget):
     """Every widget under this one, at any depth."""
     for child in widget.winfo_children():
@@ -271,6 +280,34 @@ def run():
     pump()
     attempt("outline window opens", reader.show_outline)
     pump()
+
+    # Scrolling a popup used to scroll the page behind it as well, because the
+    # wheel is bound with bind_all and that reaches every window.
+    popups = [c for c in root.winfo_children() if isinstance(c, tk.Toplevel)]
+    check("popups are separate top levels", len(popups) >= 1, len(popups))
+
+    listboxes = [w for w in _descendants(popups[-1])
+                 if isinstance(w, tk.Listbox)] if popups else []
+    check("the contents list has a visible scrollbar",
+          any(isinstance(w, tk.Scrollbar) and w.cget("troughcolor") != w.cget("bg")
+              for w in _descendants(popups[-1])) if popups else False)
+
+    if listboxes:
+        listbox = listboxes[0]
+        before = reader.canvas.yview()[0]
+        wheel = WheelEvent(listbox)
+        check("an event in a popup is not treated as the reader's",
+              reader._from_main_window(wheel) is False)
+        reader._on_wheel(wheel)
+        pump()
+        check("scrolling the contents leaves the page where it was",
+              abs(reader.canvas.yview()[0] - before) < 1e-9,
+              (before, reader.canvas.yview()[0]))
+
+        # The reader's own wheel events must still work, of course.
+        check("an event in the reader still counts as the reader's",
+              reader._from_main_window(WheelEvent(reader.canvas)) is True)
+
     for child in root.winfo_children():
         if isinstance(child, tk.Toplevel):
             child.destroy()

@@ -520,7 +520,22 @@ class GhostReader:
 
     def _bind_keys(self):
         root = self.root
-        bind = root.bind_all
+
+        def bind(sequence, action):
+            """Bind across the application, but only act in the reader itself.
+
+            bind_all reaches every window this application owns, popups
+            included. Without the guard, scrolling the Contents list turns the
+            pages behind it too, and arrowing through headings does the same.
+            Returning None rather than "break" leaves the popup's own handling
+            of the event completely alone.
+            """
+            def handler(event):
+                if not self._from_main_window(event):
+                    return None
+                return action(event)
+
+            root.bind_all(sequence, handler)
 
         bind("<Right>", lambda e: self.next_page())
         bind("<Next>", lambda e: self.next_page())
@@ -805,6 +820,22 @@ class GhostReader:
             self.prev_page()
             return
         self.canvas.yview_scroll(units * 3, "units")
+
+    def _from_main_window(self, event) -> bool:
+        """Did this event happen in the reader, rather than in a popup?
+
+        Contents and Help are separate top level windows. Anything bound with
+        bind_all fires for them as well, so every such handler has to ask.
+        """
+        widget = getattr(event, "widget", None)
+        if widget is None:
+            return True
+        try:
+            return widget.winfo_toplevel() is self.root
+        except (AttributeError, tk.TclError):
+            # event.widget is sometimes a bare name rather than a widget.
+            # Acting is the old behaviour, so fall back to that.
+            return True
 
     def _on_wheel(self, event):
         if event.state & 0x0004:  # Control held
@@ -1289,10 +1320,9 @@ class GhostReader:
             font=tkfont.Font(family="Consolas", size=10), padx=16, pady=14,
             highlightthickness=0, spacing1=1, spacing3=2,
         )
-        bar = tk.Scrollbar(frame, orient="vertical", command=text.yview,
-                           width=11, bg=PANEL, troughcolor=PANEL,
-                           activebackground=ACCENT, relief="flat", bd=0)
+        bar = _scrollbar(frame, text.yview)
         text.configure(yscrollcommand=bar.set)
+        _bind_local_wheel(text)
         bar.pack(side="right", fill="y")
         text.pack(side="left", fill="both", expand=True)
         text.insert("1.0", content)
@@ -1324,12 +1354,14 @@ class GhostReader:
             font=tkfont.Font(family="Segoe UI", size=10), activestyle="none",
             bd=0,
         )
-        bar = tk.Scrollbar(frame, orient="vertical", command=listbox.yview,
-                           width=11, bg=PANEL, troughcolor=PANEL,
-                           activebackground=ACCENT, relief="flat", bd=0)
+        bar = _scrollbar(frame, listbox.yview)
         listbox.configure(yscrollcommand=bar.set)
         bar.pack(side="right", fill="y")
         listbox.pack(side="left", fill="both", expand=True, padx=(6, 0), pady=6)
+
+        # A long contents list is the main reason to reach for the wheel, so
+        # make sure it works over the list itself and stops there.
+        _bind_local_wheel(listbox)
 
         for level, title, page_index in entries:
             listbox.insert(
@@ -1426,6 +1458,43 @@ class GhostReader:
 
 
 # --------------------------------------------------------------- helpers
+
+
+def _scrollbar(parent, command):
+    """A scrollbar you can actually see.
+
+    The popups used to draw theirs in PANEL on a PANEL trough, which is the
+    same colour as the window behind it, so the bar was invisible and the
+    lists looked like they had no way to scroll at all.
+    """
+    return tk.Scrollbar(
+        parent, orient="vertical", command=command, width=13,
+        bg=DIM,               # the thumb
+        troughcolor=BG,       # darker channel, so the thumb reads against it
+        activebackground=ACCENT,
+        relief="flat", bd=0, highlightthickness=0,
+    )
+
+
+def _bind_local_wheel(widget):
+    """Scroll this widget with the wheel, and let nothing else see the event.
+
+    Returning "break" stops the event before the application wide bindings
+    get it, which is what keeps a popup's scrolling out of the page behind.
+    """
+    def on_wheel(event):
+        widget.yview_scroll(-1 if event.delta > 0 else 1, "units")
+        return "break"
+
+    def on_button(direction):
+        def handler(_event):
+            widget.yview_scroll(direction, "units")
+            return "break"
+        return handler
+
+    widget.bind("<MouseWheel>", on_wheel)
+    widget.bind("<Button-4>", on_button(-1))
+    widget.bind("<Button-5>", on_button(1))
 
 
 def icon_path():
