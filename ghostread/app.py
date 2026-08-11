@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 import threading
 import tkinter as tk
 from tkinter import filedialog, font as tkfont
@@ -157,6 +158,13 @@ class GhostReader:
         root = self.root
         root.title("GhostRead - {}".format(self.doc.name))
         root.configure(bg=BG)
+
+        icon = icon_path()
+        if icon:
+            try:
+                root.iconbitmap(default=str(icon))
+            except tk.TclError:
+                pass  # a missing or unreadable icon is not worth failing over
 
         geometry = self.opts.geometry or saved_geometry or "760x900+60+60"
         try:
@@ -1418,6 +1426,28 @@ class GhostReader:
 
 
 # --------------------------------------------------------------- helpers
+
+
+def icon_path():
+    """Where the .ico lives, frozen or from a source checkout.
+
+    PyInstaller unpacks bundled data into a temporary folder and points
+    sys._MEIPASS at it, so the path differs between the two. Returns None if
+    there is no icon to be found, which is not worth treating as an error.
+    """
+    candidates = []
+    bundled = getattr(sys, "_MEIPASS", None)
+    if bundled:
+        candidates.append(Path(bundled) / "ghostread.ico")
+    candidates.append(
+        Path(__file__).resolve().parents[1] / "assets" / "ghostread.ico")
+    for candidate in candidates:
+        try:
+            if candidate.is_file():
+                return candidate
+        except OSError:
+            continue
+    return None
 
 
 def enable_dpi_awareness():

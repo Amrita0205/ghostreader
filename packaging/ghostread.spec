@@ -14,11 +14,15 @@ block_cipher = None
 HERE = SPECPATH                      # injected by PyInstaller: this file's folder
 ROOT = os.path.dirname(HERE)         # the project root, where ghostread/ lives
 
+ICON = os.path.join(ROOT, "assets", "ghostread.ico")
+
 a = Analysis(
     [os.path.join(HERE, "launcher.py")],
     pathex=[ROOT],
     binaries=[],
-    datas=[],
+    # Carried inside the exe as well as burned into it, so the running window
+    # can set its own icon and not just the file on disk.
+    datas=[(ICON, ".")],
     hiddenimports=["pymupdf", "PIL.ImageTk", "PIL.Image", "PIL.ImageOps"],
     hookspath=[],
     runtime_hooks=[],
@@ -53,6 +57,7 @@ exe = EXE(
     upx=False,
     runtime_tmpdir=None,
     console=False,          # GUI app: no black console window behind the overlay
+    icon=ICON,
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,

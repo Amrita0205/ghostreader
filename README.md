@@ -141,6 +141,12 @@ Page, zoom, opacity and window position are saved per document in
 `~/.ghostread/state.json`, so reopening a book drops you back where you were. Set
 `GHOSTREAD_HOME` to move that folder, or pass `--no-remember` to skip it.
 
+## What changed in 1.2.1
+
+- An actual application icon, on the exe and on the window
+- `packaging/make_icon.py` draws it, so it can be changed without a drawing
+  program
+
 ## What changed in 1.2
 
 - Ghost mode outlines the text, so it stays readable over a light or busy
