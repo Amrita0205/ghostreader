@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 import threading
 import tkinter as tk
+from tkinter import ttk
 from tkinter import filedialog, font as tkfont
 
 from PIL import ImageTk
@@ -41,10 +42,18 @@ ACCENT = "#7aa2f7"
 WARN = "#f7a27a"
 KEY_COLOUR = "#000000"  # exact colour that ghost mode makes transparent
 
-# Scrollbars. The thumb is black; the trough it runs in has to stay lighter
-# than that or there is nothing to see.
-SCROLL_THUMB = "#000000"
-SCROLL_THUMB_ACTIVE = "#101018"  # barely lifted, just enough to show a drag
+# Scrollbars. The thumb is black to look at, but must never be exactly
+# KEY_COLOUR: ghost mode keys that one value out of the whole window, so a
+# pure black thumb turns transparent and the bar looks like it is missing.
+# Near black is indistinguishable to the eye and survives the colour key.
+SCROLL_THUMB = "#0a0a10"
+SCROLL_THUMB_ACTIVE = "#15151f"
+# The channel is deliberately much lighter. It is the only thing the black
+# thumb can be seen against, in ghost mode most of all, where whatever is
+# behind the window shows through everywhere else.
+SCROLL_TROUGH = "#3a3a4c"
+SCROLL_WIDTH = 14
+SCROLLBAR_STYLE = "Ghost.Vertical.TScrollbar"
 
 # Outline width, in pixels, for ghost mode. Two is enough to lift text off a
 # busy background without the page starting to look like it has a border.
@@ -163,6 +172,7 @@ class GhostReader:
         root = self.root
         root.title("GhostRead - {}".format(self.doc.name))
         root.configure(bg=BG)
+        install_scrollbar_style(root)
 
         icon = icon_path()
         if icon:
@@ -268,10 +278,14 @@ class GhostReader:
         self.canvas = tk.Canvas(
             self.body, bg=BG, highlightthickness=0, bd=0, takefocus=True
         )
-        self.canvas.pack(side="left", fill="both", expand=True)
 
+        # Pack the scrollbar before the canvas. The packer hands out space in
+        # packing order, so a canvas packed first with expand=True claims the
+        # whole cavity and squeezes the bar down to a single pixel. It is
+        # still there and still works, it is just too narrow to see or grab.
         self.scroll = _scrollbar(self.body, self.canvas.yview)
         self.scroll.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
         self.canvas.configure(yscrollcommand=self.scroll.set)
 
         # Bottom control bar. Everything the keyboard can do is reachable here
@@ -1461,21 +1475,50 @@ class GhostReader:
 # --------------------------------------------------------------- helpers
 
 
-def _scrollbar(parent, command):
-    """A black scrollbar.
+def install_scrollbar_style(root):
+    """Set up a scrollbar that actually obeys the colours it is given.
 
-    The trough has to stay lighter than the thumb or there is nothing to see:
-    these popups used to draw a PANEL thumb on a PANEL trough, the same colour
-    as the window behind them, and the bar was invisible. So the thumb is
-    black and the channel it runs in is the lighter panel grey.
+    The classic Tk scrollbar is drawn by Windows itself, which ignores every
+    colour set on it and paints the system light grey regardless. The themed
+    widget does honour them, but only under a theme that draws its own
+    elements rather than delegating to the OS, hence clam. Nothing else in
+    this app uses ttk, so this reaches the scrollbars and nothing else.
     """
-    return tk.Scrollbar(
-        parent, orient="vertical", command=command, width=13,
-        bg=SCROLL_THUMB,          # the thumb itself
-        troughcolor=PANEL,        # lighter channel, so the black reads on it
-        activebackground=SCROLL_THUMB_ACTIVE,
-        relief="flat", bd=0, highlightthickness=0,
+    style = ttk.Style(root)
+    try:
+        if "clam" in style.theme_names():
+            style.theme_use("clam")
+    except tk.TclError:
+        pass
+
+    style.configure(
+        SCROLLBAR_STYLE,
+        background=SCROLL_THUMB,       # the thumb
+        troughcolor=SCROLL_TROUGH,     # the channel it runs in
+        bordercolor=SCROLL_TROUGH,
+        darkcolor=SCROLL_THUMB,        # clam shades the thumb with these two
+        lightcolor=SCROLL_THUMB,
+        arrowcolor=SCROLL_TROUGH,      # hide the end arrows in the channel
+        gripcount=0, relief="flat", width=SCROLL_WIDTH,
     )
+    style.map(
+        SCROLLBAR_STYLE,
+        background=[("pressed", SCROLL_THUMB_ACTIVE),
+                    ("active", SCROLL_THUMB_ACTIVE)],
+    )
+    return style
+
+
+def _scrollbar(parent, command):
+    """A black scrollbar that stays visible in every mode.
+
+    Three separate things have hidden this bar, all avoided here. Drawing the
+    thumb the same colour as its trough made it invisible against the window.
+    Drawing it exactly KEY_COLOUR made ghost mode key it out of the window
+    altogether. And a plain tk.Scrollbar ignores both colours on Windows.
+    """
+    return ttk.Scrollbar(parent, orient="vertical", command=command,
+                         style=SCROLLBAR_STYLE)
 
 
 def _bind_local_wheel(widget):

@@ -84,7 +84,9 @@ def _survives(function) -> bool:
 
 def run():
     import tkinter as tk
-    from ghostread.app import MAX_HALO, GhostReader
+    from tkinter import ttk
+    from ghostread.app import (
+        KEY_COLOUR, MAX_HALO, SCROLLBAR_STYLE, GhostReader)
     from ghostread.cli import build_parser
     from ghostread.document import PdfDocument
 
@@ -288,9 +290,35 @@ def run():
 
     listboxes = [w for w in _descendants(popups[-1])
                  if isinstance(w, tk.Listbox)] if popups else []
-    check("the contents list has a visible scrollbar",
-          any(isinstance(w, tk.Scrollbar) and w.cget("troughcolor") != w.cget("bg")
-              for w in _descendants(popups[-1])) if popups else False)
+    check("the contents list has a scrollbar",
+          any(isinstance(w, ttk.Scrollbar) for w in _descendants(popups[-1]))
+          if popups else False)
+
+    print("\nscrollbars survive every way of vanishing")
+    bars = [reader.scroll]
+    for popup in popups:
+        bars += [w for w in _descendants(popup)
+                 if isinstance(w, ttk.Scrollbar)]
+    check("every scrollbar was found", len(bars) >= 2, len(bars))
+
+    # The bug that actually hid it: the canvas was packed first with
+    # expand=True, so it took the whole cavity and left the bar one pixel
+    # wide. Still present, still working, far too narrow to see or grab.
+    check("the page scrollbar is wide enough to see and grab",
+          reader.scroll.winfo_width() > 4, reader.scroll.winfo_width())
+
+    style = ttk.Style(root)
+    thumb = str(style.lookup(SCROLLBAR_STYLE, "background"))
+    trough = str(style.lookup(SCROLLBAR_STYLE, "troughcolor"))
+    check("a theme that honours colours is in use, not the native one",
+          str(style.theme_use()) == "clam", style.theme_use())
+    check("the thumb is not the ghost mode key colour",
+          thumb.lower() != KEY_COLOUR.lower(), thumb)
+    check("the thumb is not the same colour as its trough",
+          thumb != trough, (thumb, trough))
+    check("every scrollbar uses that one style",
+          all(str(b.cget("style")) == SCROLLBAR_STYLE for b in bars),
+          [str(b.cget("style")) for b in bars])
 
     if listboxes:
         listbox = listboxes[0]
