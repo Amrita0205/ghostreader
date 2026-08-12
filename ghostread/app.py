@@ -41,6 +41,11 @@ ACCENT = "#7aa2f7"
 WARN = "#f7a27a"
 KEY_COLOUR = "#000000"  # exact colour that ghost mode makes transparent
 
+# Scrollbars. The thumb is black; the trough it runs in has to stay lighter
+# than that or there is nothing to see.
+SCROLL_THUMB = "#000000"
+SCROLL_THUMB_ACTIVE = "#101018"  # barely lifted, just enough to show a drag
+
 # Outline width, in pixels, for ghost mode. Two is enough to lift text off a
 # busy background without the page starting to look like it has a border.
 DEFAULT_HALO = 2
@@ -265,11 +270,7 @@ class GhostReader:
         )
         self.canvas.pack(side="left", fill="both", expand=True)
 
-        self.scroll = tk.Scrollbar(
-            self.body, orient="vertical", command=self.canvas.yview,
-            width=10, bg=BAR, troughcolor=BG, activebackground=ACCENT,
-            relief="flat", bd=0,
-        )
+        self.scroll = _scrollbar(self.body, self.canvas.yview)
         self.scroll.pack(side="right", fill="y")
         self.canvas.configure(yscrollcommand=self.scroll.set)
 
@@ -1461,17 +1462,18 @@ class GhostReader:
 
 
 def _scrollbar(parent, command):
-    """A scrollbar you can actually see.
+    """A black scrollbar.
 
-    The popups used to draw theirs in PANEL on a PANEL trough, which is the
-    same colour as the window behind it, so the bar was invisible and the
-    lists looked like they had no way to scroll at all.
+    The trough has to stay lighter than the thumb or there is nothing to see:
+    these popups used to draw a PANEL thumb on a PANEL trough, the same colour
+    as the window behind them, and the bar was invisible. So the thumb is
+    black and the channel it runs in is the lighter panel grey.
     """
     return tk.Scrollbar(
         parent, orient="vertical", command=command, width=13,
-        bg=DIM,               # the thumb
-        troughcolor=BG,       # darker channel, so the thumb reads against it
-        activebackground=ACCENT,
+        bg=SCROLL_THUMB,          # the thumb itself
+        troughcolor=PANEL,        # lighter channel, so the black reads on it
+        activebackground=SCROLL_THUMB_ACTIVE,
         relief="flat", bd=0, highlightthickness=0,
     )
 
