@@ -187,6 +187,8 @@ tests/
 packaging/
   launcher.py   entry point for the frozen build
   ghostread.spec PyInstaller recipe for GhostRead.exe
+run.bat         run from source
+build.bat       test and rebuild dist\GhostRead.exe
 ```
 
 `document.py` has no GUI imports on purpose, so rendering and search can be

@@ -45,12 +45,27 @@ app still starts on Linux and macOS with those features quietly switched off.
 ## Building the Windows exe locally
 
 ```
+build.bat            run both test suites, then rebuild dist\GhostRead.exe
+build.bat /fast      skip the tests
+build.bat /run       build, then start the exe you just made
+```
+
+It sets up the same `.venv` that `run.bat` uses, adds PyInstaller the first
+time, and stops before touching the exe if a test fails or if GhostRead is
+still open, since Windows will not let a running exe be overwritten.
+
+The long way, if you want the steps yourself:
+
+```
 pip install pyinstaller
 pyinstaller packaging/ghostread.spec --noconfirm --clean
 ```
 
-The result is `dist/GhostRead.exe`. CI does this for you on every `v*` tag, so
-you only need it if you are changing how the build works.
+`--clean` matters. Without it a stale analysis cache can freeze the previous
+code, and you get an exe that looks built but behaves like the old one.
+
+CI does all this for you on every `v*` tag, so a local build is only needed to
+try a change in the real exe before tagging it.
 
 ## Licence
 
