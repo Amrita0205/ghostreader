@@ -42,16 +42,17 @@ ACCENT = "#7aa2f7"
 WARN = "#f7a27a"
 KEY_COLOUR = "#000000"  # exact colour that ghost mode makes transparent
 
-# Scrollbars. The thumb is black to look at, but must never be exactly
-# KEY_COLOUR: ghost mode keys that one value out of the whole window, so a
-# pure black thumb turns transparent and the bar looks like it is missing.
-# Near black is indistinguishable to the eye and survives the colour key.
-SCROLL_THUMB = "#0a0a10"
-SCROLL_THUMB_ACTIVE = "#15151f"
-# The channel is deliberately much lighter. It is the only thing the black
-# thumb can be seen against, in ghost mode most of all, where whatever is
-# behind the window shows through everywhere else.
-SCROLL_TROUGH = "#3a3a4c"
+# Scrollbars. The thumb is red on purpose. Faded down or in ghost mode the
+# window is mostly whatever is behind it, and a dark thumb reads as one more
+# shadow among the rest; a colour that appears nowhere else on screen still
+# says "this is the scrollbar, and it is here" at 15% opacity. Red is also
+# nowhere near KEY_COLOUR, which ghost mode keys out of the whole window, so
+# there is no risk of the thumb being made transparent along with the page.
+SCROLL_THUMB = "#e0393e"
+SCROLL_THUMB_ACTIVE = "#ff5c60"
+# The channel stays dark and neutral, so the red has something quiet to sit
+# against and the pair reads as one object rather than two stripes.
+SCROLL_TROUGH = "#2a2a36"
 SCROLL_WIDTH = 14
 SCROLLBAR_STYLE = "Ghost.Vertical.TScrollbar"
 
@@ -1510,12 +1511,13 @@ def install_scrollbar_style(root):
 
 
 def _scrollbar(parent, command):
-    """A black scrollbar that stays visible in every mode.
+    """A red scrollbar that stays visible in every mode.
 
     Three separate things have hidden this bar, all avoided here. Drawing the
-    thumb the same colour as its trough made it invisible against the window.
-    Drawing it exactly KEY_COLOUR made ghost mode key it out of the window
-    altogether. And a plain tk.Scrollbar ignores both colours on Windows.
+    thumb a dark colour let it vanish into the window, and into whatever was
+    showing through it once the window was faded. Drawing it exactly
+    KEY_COLOUR made ghost mode key it out of the window altogether. And a
+    plain tk.Scrollbar ignores both colours on Windows.
     """
     return ttk.Scrollbar(parent, orient="vertical", command=command,
                          style=SCROLLBAR_STYLE)
