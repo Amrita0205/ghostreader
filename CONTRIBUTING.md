@@ -45,14 +45,29 @@ app still starts on Linux and macOS with those features quietly switched off.
 ## Building the Windows exe locally
 
 ```
-build.bat            run both test suites, then rebuild dist\GhostRead.exe
+build.bat            test, rebuild the exe, update the installed copy
 build.bat /fast      skip the tests
-build.bat /run       build, then start the exe you just made
+build.bat /install   also create the install if there is not one yet
+build.bat /noinstall build only, leave the installed copy alone
+build.bat /run       start the app when it is done
 ```
 
 It sets up the same `.venv` that `run.bat` uses, adds PyInstaller the first
 time, and stops before touching the exe if a test fails or if GhostRead is
 still open, since Windows will not let a running exe be overwritten.
+
+### Why it installs as well as builds
+
+`dist\GhostRead.exe` is not the exe anyone runs. A desktop shortcut points at
+`%LOCALAPPDATA%\GhostRead\GhostRead.exe`, and a build that stops at `dist\`
+leaves that copy on the old code: the build succeeds, the app behaves exactly
+as before, and the change looks like it failed when it is really just sitting
+in a file nothing launches.
+
+So the build updates an install that already exists, every time. It only
+*creates* one when you pass `/install`, which also makes the desktop shortcut
+if it is missing, so a plain `build.bat` on a machine that has no install
+still writes nothing outside the project folder.
 
 The long way, if you want the steps yourself:
 
